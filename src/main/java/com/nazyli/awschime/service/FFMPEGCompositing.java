@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -113,16 +114,18 @@ public class FFMPEGCompositing {
         if (checkDir) {
             List<String> path = new ArrayList<>();
             for (String key : urls) {
-                GeneratePresignedUrlRequest req = new GeneratePresignedUrlRequest(bucketName, key);
-                req.setExpiration(new Date(System.currentTimeMillis() + 3600000));
-                URL url = s3Client.generatePresignedUrl(req);
-                try (InputStream inputStream = url.openStream()) {
+//                GeneratePresignedUrlRequest req = new GeneratePresignedUrlRequest(bucketName, key);
+//                req.setExpiration(new Date(System.currentTimeMillis() + 3600000));
+//                URL url = s3Client.generatePresignedUrl(req);
+//                URL url = s3Client.getObject(bucketName, key).getObjectContent().getHttpRequest().getURI().toURL();
+//                InputStream is = s3Client.getObject(bucketName, key).getObjectContent();
+//                try (InputStream inputStream = is) {
                     String fileName = key.substring(key.lastIndexOf("/") + 1, key.lastIndexOf(".mp4"));
                     File file = new File(saveAs + fileName + ".mp4");
                     // commons-io
-                    FileUtils.copyInputStreamToFile(inputStream, file);
+                    FileUtils.copyInputStreamToFile(s3Client.getObject(bucketName, key).getObjectContent(), file);
                     path.add(file.toString());
-                }
+//                }
             }
             return path;
         }

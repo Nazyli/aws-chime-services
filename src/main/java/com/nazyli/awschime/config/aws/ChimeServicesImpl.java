@@ -112,6 +112,25 @@ public class ChimeServicesImpl implements ChimeServices{
             return null;
         }
     }
+
+    public ArtifactsConfiguration artifactsConfiguration(){
+        ArtifactsConfiguration artifactsConfiguration = new ArtifactsConfiguration();
+        AudioArtifactsConfiguration audio = new AudioArtifactsConfiguration();
+        audio.setMuxType("AudioWithActiveSpeakerVideo");
+        artifactsConfiguration.setAudio(audio);
+
+        VideoArtifactsConfiguration video = new VideoArtifactsConfiguration();
+        video.setMuxType("Enabled");
+        video.setState("VideoOnly");
+        artifactsConfiguration.setVideo(video);
+
+        ContentArtifactsConfiguration content = new ContentArtifactsConfiguration();
+        content.setMuxType("ContentOnly");
+        content.setState("Enabled");
+        artifactsConfiguration.setContent(content);
+
+        return artifactsConfiguration;
+    }
     public DeleteMediaCapturePipelineResult deleteMediaCapturePipeline(String mediaPipelineId) {
         DeleteMediaCapturePipelineRequest delPipelineRequest = new DeleteMediaCapturePipelineRequest();
         delPipelineRequest.setMediaPipelineId(mediaPipelineId);
