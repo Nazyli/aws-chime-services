@@ -7,6 +7,7 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.nazyli.awschime.config.aws.ChimeServices;
 import com.nazyli.awschime.service.FFMPEGNetBramp;
 import com.nazyli.awschime.service.FFMPEGCompositing;
+import com.nazyli.awschime.service.MeetingEventsServices;
 import com.nazyli.awschime.service.humble.VideoService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -24,16 +25,18 @@ public class ServiceMeetingController {
     private final FFMPEGCompositing ffmpegCompositing;
     private final AmazonS3 s3Client;
     private final FFMPEGNetBramp ffmpegByMaven;
+    private final MeetingEventsServices meetingEventsServices;
 
     @Value("${aws.bucket.name}")
     private String bucketName;
 
-    public ServiceMeetingController(ChimeServices chimeService, VideoService videoService, FFMPEGCompositing ffmpegCompositing, AmazonS3 s3Client, FFMPEGNetBramp ffmpegByMaven) {
+    public ServiceMeetingController(ChimeServices chimeService, VideoService videoService, FFMPEGCompositing ffmpegCompositing, AmazonS3 s3Client, FFMPEGNetBramp ffmpegByMaven, MeetingEventsServices meetingEventsServices) {
         this.chimeService = chimeService;
         this.videoService = videoService;
         this.ffmpegCompositing = ffmpegCompositing;
         this.s3Client = s3Client;
         this.ffmpegByMaven = ffmpegByMaven;
+        this.meetingEventsServices = meetingEventsServices;
     }
 
     @GetMapping("/humble/{id}")
@@ -54,6 +57,13 @@ public class ServiceMeetingController {
     public Object test(@PathVariable String id) throws IOException {
         Map<String, Object> res = new HashMap<>();
         res.put("listMedia", ffmpegByMaven.AudioProcess(id));
+        return res;
+    }
+
+    @GetMapping("/meeting-events/{id}")
+    public Object meetingEvents(@PathVariable String id) throws IOException {
+        Map<String, Object> res = new HashMap<>();
+        res.put("listMeetingEvents", meetingEventsServices.getObject(id));
         return res;
     }
 
