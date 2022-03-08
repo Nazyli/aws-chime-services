@@ -5,6 +5,7 @@ import com.amazonaws.services.s3.model.Bucket;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.nazyli.awschime.config.aws.ChimeServices;
+import com.nazyli.awschime.service.FFMPEGNetBramp;
 import com.nazyli.awschime.service.FFMPEGCompositing;
 import com.nazyli.awschime.service.humble.VideoService;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,15 +23,17 @@ public class ServiceMeetingController {
     private final VideoService videoService;
     private final FFMPEGCompositing ffmpegCompositing;
     private final AmazonS3 s3Client;
+    private final FFMPEGNetBramp ffmpegByMaven;
 
     @Value("${aws.bucket.name}")
     private String bucketName;
 
-    public ServiceMeetingController(ChimeServices chimeService, VideoService videoService, FFMPEGCompositing ffmpegCompositing, AmazonS3 s3Client) {
+    public ServiceMeetingController(ChimeServices chimeService, VideoService videoService, FFMPEGCompositing ffmpegCompositing, AmazonS3 s3Client, FFMPEGNetBramp ffmpegByMaven) {
         this.chimeService = chimeService;
         this.videoService = videoService;
         this.ffmpegCompositing = ffmpegCompositing;
         this.s3Client = s3Client;
+        this.ffmpegByMaven = ffmpegByMaven;
     }
 
     @GetMapping("/humble/{id}")
@@ -44,6 +47,13 @@ public class ServiceMeetingController {
     public Object convertFFMPEG(@PathVariable String id) throws IOException, InterruptedException, ParseException {
         Map<String, Object> res = new HashMap<>();
         res.put("listMedia", ffmpegCompositing.composittingObject(id));
+        return res;
+    }
+
+    @GetMapping("/ffmpeg-bramp/{id}")
+    public Object test(@PathVariable String id) throws IOException {
+        Map<String, Object> res = new HashMap<>();
+        res.put("listMedia", ffmpegByMaven.AudioProcess(id));
         return res;
     }
 
