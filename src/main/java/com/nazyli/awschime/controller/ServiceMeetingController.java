@@ -56,7 +56,7 @@ public class ServiceMeetingController {
     @GetMapping("/ffmpeg-bramp/{id}")
     public Object test(@PathVariable String id) throws IOException {
         Map<String, Object> res = new HashMap<>();
-        res.put("listMedia", ffmpegByMaven.AudioProcess(id));
+        res.put("fileName", ffmpegByMaven.AudioCompositing(id));
         return res;
     }
 
