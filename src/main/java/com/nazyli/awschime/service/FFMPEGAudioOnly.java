@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-public class FFMPEGNetBramp {
+public class FFMPEGAudioOnly {
     @Value("${aws.bucket.name}")
     private String bucketName;
 
@@ -34,7 +34,7 @@ public class FFMPEGNetBramp {
     private static final String FOLDER_MEETING = "captures/%s/";
     private static final String TEMPORARY_SAVE = "/tmp/" + FOLDER_MEETING;
 
-    public FFMPEGNetBramp(AmazonS3 s3Client) throws IOException {
+    public FFMPEGAudioOnly(AmazonS3 s3Client) throws IOException {
         this.s3Client = s3Client;
     }
 

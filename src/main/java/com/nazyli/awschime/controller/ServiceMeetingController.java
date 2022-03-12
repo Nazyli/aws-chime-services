@@ -5,7 +5,7 @@ import com.amazonaws.services.s3.model.Bucket;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.nazyli.awschime.config.aws.ChimeServices;
-import com.nazyli.awschime.service.FFMPEGNetBramp;
+import com.nazyli.awschime.service.FFMPEGAudioOnly;
 import com.nazyli.awschime.service.FFMPEGCompositing;
 import com.nazyli.awschime.service.MeetingEventsServices;
 import com.nazyli.awschime.service.humble.VideoService;
@@ -24,18 +24,18 @@ public class ServiceMeetingController {
     private final VideoService videoService;
     private final FFMPEGCompositing ffmpegCompositing;
     private final AmazonS3 s3Client;
-    private final FFMPEGNetBramp ffmpegByMaven;
+    private final FFMPEGAudioOnly ffmpegAudioOnly;
     private final MeetingEventsServices meetingEventsServices;
 
     @Value("${aws.bucket.name}")
     private String bucketName;
 
-    public ServiceMeetingController(ChimeServices chimeService, VideoService videoService, FFMPEGCompositing ffmpegCompositing, AmazonS3 s3Client, FFMPEGNetBramp ffmpegByMaven, MeetingEventsServices meetingEventsServices) {
+    public ServiceMeetingController(ChimeServices chimeService, VideoService videoService, FFMPEGCompositing ffmpegCompositing, AmazonS3 s3Client, FFMPEGAudioOnly ffmpegAudioOnly, MeetingEventsServices meetingEventsServices) {
         this.chimeService = chimeService;
         this.videoService = videoService;
         this.ffmpegCompositing = ffmpegCompositing;
         this.s3Client = s3Client;
-        this.ffmpegByMaven = ffmpegByMaven;
+        this.ffmpegAudioOnly = ffmpegAudioOnly;
         this.meetingEventsServices = meetingEventsServices;
     }
 
@@ -56,7 +56,7 @@ public class ServiceMeetingController {
     @GetMapping("/ffmpeg-bramp/{id}")
     public Object test(@PathVariable String id) throws IOException {
         Map<String, Object> res = new HashMap<>();
-        res.put("fileName", ffmpegByMaven.AudioCompositing(id));
+        res.put("fileName", ffmpegAudioOnly.AudioCompositing(id));
         return res;
     }
 
