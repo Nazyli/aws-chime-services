@@ -6,6 +6,7 @@ import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.nazyli.awschime.config.aws.ChimeServices;
 import com.nazyli.awschime.service.FFMPEGAudioOnly;
+import com.nazyli.awschime.service.FFMPEGAudioVideo;
 import com.nazyli.awschime.service.FFMPEGCompositing;
 import com.nazyli.awschime.service.MeetingEventsServices;
 import com.nazyli.awschime.service.humble.VideoService;
@@ -25,17 +26,19 @@ public class ServiceMeetingController {
     private final FFMPEGCompositing ffmpegCompositing;
     private final AmazonS3 s3Client;
     private final FFMPEGAudioOnly ffmpegAudioOnly;
+    private final FFMPEGAudioVideo ffmpegAudioVideo;
     private final MeetingEventsServices meetingEventsServices;
 
     @Value("${aws.bucket.name}")
     private String bucketName;
 
-    public ServiceMeetingController(ChimeServices chimeService, VideoService videoService, FFMPEGCompositing ffmpegCompositing, AmazonS3 s3Client, FFMPEGAudioOnly ffmpegAudioOnly, MeetingEventsServices meetingEventsServices) {
+    public ServiceMeetingController(ChimeServices chimeService, VideoService videoService, FFMPEGCompositing ffmpegCompositing, AmazonS3 s3Client, FFMPEGAudioOnly ffmpegAudioOnly, FFMPEGAudioVideo ffmpegAudioVideo, MeetingEventsServices meetingEventsServices) {
         this.chimeService = chimeService;
         this.videoService = videoService;
         this.ffmpegCompositing = ffmpegCompositing;
         this.s3Client = s3Client;
         this.ffmpegAudioOnly = ffmpegAudioOnly;
+        this.ffmpegAudioVideo = ffmpegAudioVideo;
         this.meetingEventsServices = meetingEventsServices;
     }
 
@@ -58,6 +61,11 @@ public class ServiceMeetingController {
         Map<String, Object> res = new HashMap<>();
         res.put("fileName", ffmpegAudioOnly.AudioCompositing(id));
         return res;
+    }
+
+    @GetMapping("/ffmpeg-content/{id}")
+    public Object content(@PathVariable String id) throws IOException, ParseException {
+        return ffmpegAudioVideo.VideoCompositing(id);
     }
 
     @GetMapping("/meeting-events/{id}")
