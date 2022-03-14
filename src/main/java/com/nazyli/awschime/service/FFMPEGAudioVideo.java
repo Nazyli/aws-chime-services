@@ -219,6 +219,7 @@ public class FFMPEGAudioVideo {
         timeString = timeString.substring(0, 23);
         return new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS").parse(timeString);
     }
+}
 
 /*
     public Object VideoCompositing(String meetingId) throws IOException, ParseException {
@@ -300,4 +301,44 @@ public class FFMPEGAudioVideo {
     }
 
  */
-}
+
+/*
+CONTENT RESOULITON 1920 * 1080
+ffmpeg -i /Users/nazyli/downloads/processedAudio.mp4
+-i /Users/nazyli/downloads/processedVideo.mp4
+-i /Users/nazyli/downloads/processedAudio.mp4
+-filter_complex "
+[0:v] scale=1920:1080,trim=0:15[audio];
+[1:v] scale=1920:1080, tpad=start_duration='0':start_mode=add:color=blue[content];
+[2:v] scale=360:202, trim=start=15, setpts=PTS-STARTPTS[user];
+[content][user] overlay=1530:10:eof_action=pass[content-user];
+[audio][content-user]concat=n=2[final]
+" -vsync 2 -map "[final]" -map 0:a  -f mp4 -movflags +faststart /Users/nazyli/downloads/processed.mp4
+
+//Sample overlay
+[content][user] overlay=main_w-(overlay_w+10):10:eof_action=pass[content-user];
+
+//
+ffmpeg -i /Users/nazyli/downloads/processedAudio.mp4
+-i /Users/nazyli/downloads/v-call/captures/a4b6afef-6990-4f36-adff-f55695330706/video/2022-03-12-06-27-38-975-b6ede27c-310a-9ba5-286c-6fe086752645#content.mp4
+-i /Users/nazyli/downloads/v-call/captures/a4b6afef-6990-4f36-adff-f55695330706/video/2022-03-12-06-28-02-326-b6ede27c-310a-9ba5-286c-6fe086752645#content.mp4
+-filter_complex "
+[0:v] scale=640:480,trim=start='0':end='25', setpts=PTS-STARTPTS[audio];
+
+[1:v] scale=640:480, tpad=start_mode=add:color=blue [content-1];
+[0:v] scale=120:90, trim=start='25', setpts=PTS-STARTPTS[user-1];
+[content-1][user-1] overlay=510:10:eof_action=pass[content-user-1];
+[0:v] scale=640:480,trim=start='28':end='47', setpts=PTS-STARTPTS[end-1];
+[content-user-1][end-1]concat=n=2[res-1];
+
+[2:v] scale=640:480, tpad=start_mode=add:color=blue [content-2];
+[0:v] scale=120:90, trim=start='48', setpts=PTS-STARTPTS[user-2];
+[content-2][user-2] overlay=510:10:eof_action=pass[content-user-2];
+[0:v] scale=640:480,trim=start='50078ms':end='50078ms', setpts=PTS-STARTPTS[end-2];
+[content-user-2][end-2]concat=n=2[res-2];
+
+[audio][res-1][res-2]concat=n=3[final]
+" -vsync 2 -map "[final]" -map 0:a -f mp4 -movflags +faststart /Users/nazyli/downloads/processed.mp4
+
+[0:v] scale=640:480,trim=start='28':end=28+19(end + next), setpts=PTS-STARTPTS[end];
+ */
