@@ -6,7 +6,6 @@ import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Lists;
 import com.nazyli.awschime.dto.ContentDto;
-import com.nazyli.awschime.dto.RegisterOffset;
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFmpegExecutor;
 import net.bramp.ffmpeg.FFprobe;
@@ -37,30 +36,61 @@ public class FFMPEGAudioVideo {
     private final FFmpeg ffmpeg = new FFmpeg();
     private final FFprobe ffprobe = new FFprobe();
     private static final String FOLDER_MEETING = "captures/%s/";
-    private static final String TEMPORARY_SAVE = "/tmp/" + FOLDER_MEETING;
+    private static final String TEMPORARY_SAVE = "/Users/nazyli/downloads/v-call/" + FOLDER_MEETING;
 
     public FFMPEGAudioVideo(AmazonS3 s3Client) throws IOException {
         this.s3Client = s3Client;
     }
 
-    public Object AudioCompositing(String meetingId) throws IOException {
-        String audio = "audio";
-        String audioName = audio + "_" + meetingId + ".mp4";
-        String outputFile = String.format(TEMPORARY_SAVE, meetingId);
-        String outputFileAudio = outputFile + audioName;
-
-        List<String> pathList = listMediaUrl(meetingId, audio).stream()
+    public String mergeMedia(String meetingId) throws ParseException, IOException {
+        String key = "";
+        String audioName = "audio_" + meetingId + ".mp4";
+        List<String> audioUrl = listMediaUrl(meetingId, "audio").stream()
                 .map(e -> s3Client.getUrl(bucketName, e).toExternalForm())
                 .collect(Collectors.toList());
 
+        Date startAudio = toDate(audioUrl.get(0));
+
+        String fileAudio = audioProcess(meetingId, audioName, audioUrl);
+        if (fileAudio != null) {
+
+            String videoName = "video_" + meetingId + ".mp4";
+            List<String> videoUrl = listMediaUrl(meetingId, "video").stream()
+                    .map(e -> s3Client.getUrl(bucketName, e).toExternalForm())
+                    .collect(Collectors.toList());
+            if (!videoUrl.isEmpty()) {
+                String fileVideo = videoProcess(meetingId, fileAudio, startAudio, videoName, videoUrl);
+                if (fileVideo != null) {
+                    key = String.format(FOLDER_MEETING, meetingId) + videoName;
+                    s3Client.putObject(bucketName, key, new File(fileVideo));
+                } else {
+                    throw new RuntimeException("Error video merge");
+                }
+            } else {
+                key = String.format(FOLDER_MEETING, meetingId) + audioName;
+                s3Client.putObject(bucketName, key, new File(fileAudio));
+            }
+
+        } else {
+            throw new RuntimeException("Error audio merge");
+        }
+        FileUtils.deleteDirectory(new File(String.format(TEMPORARY_SAVE, meetingId)));
+
+        return s3Client.getUrl(bucketName, key).toExternalForm();
+    }
+
+    public String audioProcess(String meetingId, String audioName, List<String> audioUrl) throws IOException {
+        String outputFile = String.format(TEMPORARY_SAVE, meetingId);
+        String outputFileAudio = outputFile + audioName;
+
         File theDir = new File(outputFile);
         boolean checkDir = theDir.exists();
-        if (!checkDir && !pathList.isEmpty()) {
+        if (!checkDir && !audioUrl.isEmpty()) {
             checkDir = theDir.mkdirs();
         }
         if (checkDir) {
             try {
-                String filesStrings = Lists.newArrayList(pathList)
+                String filesStrings = Lists.newArrayList(audioUrl)
                         .stream()
                         .map(p -> "file '" + p + "'")
                         .collect(Collectors.joining(System.getProperty("line.separator")));
@@ -81,11 +111,7 @@ public class FFMPEGAudioVideo {
                 FFmpegJob job = executor.createJob(builder);
                 job.run();
                 if (FFmpegJob.State.FINISHED == job.getState()) {
-                    String key = String.format(FOLDER_MEETING, meetingId) + audioName;
-                    s3Client.putObject(bucketName, key, new File(outputFileAudio));
-                    FileUtils.deleteDirectory(new File(outputFile));
-
-                    return s3Client.getUrl(bucketName, key).toExternalForm();
+                    return outputFileAudio;
                 }
                 return null;
             } catch (IOException e) {
@@ -95,6 +121,106 @@ public class FFMPEGAudioVideo {
         return null;
     }
 
+    public String videoProcess(String meetingId, String fileAudio, Date startAudio, String videoName, List<String> videoUrl) throws IOException, ParseException {
+        String outputFile = String.format(TEMPORARY_SAVE, meetingId);
+        String outputFileContent = outputFile + videoName;
+
+        List<ContentDto> contentList = new ArrayList<>();
+        for (String url : videoUrl) {
+            FFmpegProbeResult probeResult = ffprobe.probe(url);
+            FFmpegFormat format = probeResult.getFormat();
+            double duration = format.duration;
+            Date urlDate = toDate(url);
+            long start = urlDate != null ? urlDate.getTime() - startAudio.getTime() : 0;
+            long end = (long) ((duration * 1000) + start);
+
+            ContentDto contentDto = new ContentDto();
+            contentDto.setUrl(url);
+            contentDto.setDateContent(toDate(url));
+            contentDto.setStart(start);
+            contentDto.setEnd(end);
+            contentDto.setDuration(duration);
+            contentList.add(contentDto);
+        }
+
+        File theDir = new File(outputFile);
+        boolean checkDir = theDir.exists();
+        if (!checkDir && !videoUrl.isEmpty()) {
+            checkDir = theDir.mkdirs();
+        }
+        if (checkDir) {
+            videoUrl.add(0, fileAudio);
+            FFmpegBuilder builder = new FFmpegBuilder();
+            videoUrl.forEach(builder::addInput);
+            builder.setComplexFilter(filterComplexVideo(contentList))
+                    .addOutput(outputFileContent)
+                    .setAudioCodec("aac")
+                    .setVideoCodec("libx264")
+                    .addExtraArgs("-vsync", "2", "-map", "[final]", "-map", "0:a")
+                    .setFormat("mp4")
+                    .setVideoMovFlags("+faststart")
+                    .done();
+
+            FFmpegExecutor executor = new FFmpegExecutor(ffmpeg, ffprobe);
+            FFmpegJob job = executor.createJob(builder);
+            job.run();
+
+            if (FFmpegJob.State.FINISHED == job.getState()) {
+                return outputFileContent;
+            }
+            return null;
+        }
+
+        return null;
+    }
+
+    public String filterComplexVideo(List<ContentDto> contentList) {
+        StringBuilder filterComplex = new StringBuilder(), finalAll = new StringBuilder("[audio]");
+        int i = 1;
+        for (ContentDto l : contentList) {
+            if (i == 1) {
+                filterComplex.append(" [0:v] scale=640:480,trim=start='0ms':end='" + l.getStart() + "ms', setpts=PTS-STARTPTS[audio]; ");
+            }
+            String content = "[" + i + ":v] scale=640:480[content-" + i + "]; ";
+            String audio = "[0:v] scale=120:90, trim=start='" + l.getStart() + "ms', setpts=PTS-STARTPTS[user-" + i + "]; ";
+            String overlay = "[content-" + i + "][user-" + i + "] overlay=510:10:eof_action=pass[content-user-" + i + "]; ";
+            String stopContent;
+            if (contentList.size() != i) {
+                stopContent = "[0:v] scale=640:480,trim=start='" + l.getEnd() + "ms':end='" + contentList.get(i).getStart() + "ms', setpts=PTS-STARTPTS[stop-content-" + i + "]; ";
+            } else {
+                stopContent = "[0:v] scale=640:480,trim=start='" + l.getEnd() + "ms', setpts=PTS-STARTPTS[stop-content-" + i + "]; ";
+            }
+            String resultContent = "[content-user-" + i + "][stop-content-" + i + "]concat=n=2[result-content-" + i + "]; ";
+            filterComplex.append(content + audio + overlay + stopContent + resultContent);
+
+            finalAll.append("[result-content-" + i + "]");
+            i++;
+        }
+        finalAll.append("concat=n=" + i + "[final]");
+        return filterComplex.append(finalAll).toString();
+    }
+
+    public List<String> listMediaUrl(String meetingId, String folder) {
+        String prefixBucket = String.format(FOLDER_MEETING, meetingId) + folder;
+        ListObjectsRequest listObjectsRequest = new ListObjectsRequest()
+                .withBucketName(bucketName).withPrefix(prefixBucket);
+        ObjectListing objects = s3Client.listObjects(listObjectsRequest);
+        return objects.getObjectSummaries()
+                .stream()
+                .sorted(Comparator.comparing(S3ObjectSummary::getLastModified))
+                .map(S3ObjectSummary::getKey).collect(Collectors.toList());
+    }
+
+    public Date toDate(String key) throws ParseException {
+        String timeString = key;
+        if (key.lastIndexOf("/") != -1) {
+            timeString = key.substring(key.lastIndexOf("/") + 1, key.lastIndexOf(".mp4"));
+        }
+        timeString = timeString.substring(0, 23);
+        return new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS").parse(timeString);
+    }
+
+/*
     public Object VideoCompositing(String meetingId) throws IOException, ParseException {
         List<String> audioUrl = listMediaUrl(meetingId, "audio").stream()
                 .map(e -> s3Client.getUrl(bucketName, e).toExternalForm())
@@ -173,38 +299,5 @@ public class FFMPEGAudioVideo {
         return result;
     }
 
-    public List<String> listMediaUrl(String meetingId, String folder) {
-        String prefixBucket = String.format(FOLDER_MEETING, meetingId) + folder;
-        ListObjectsRequest listObjectsRequest = new ListObjectsRequest()
-                .withBucketName(bucketName).withPrefix(prefixBucket);
-        ObjectListing objects = s3Client.listObjects(listObjectsRequest);
-        return objects.getObjectSummaries()
-                .stream()
-                .sorted(Comparator.comparing(S3ObjectSummary::getLastModified))
-                .map(S3ObjectSummary::getKey).collect(Collectors.toList());
-    }
-
-
-    public void registerOffset(String type, String key) throws ParseException {
-        Date start_timestamp = toDate(key);
-        if (type.equalsIgnoreCase("audio")) {
-            RegisterOffset.AUDIO_TIME = start_timestamp;
-        }
-        if (type.equalsIgnoreCase("content")) {
-            RegisterOffset.CONTENT_TIME = start_timestamp;
-        }
-    }
-
-    public Date toDate(String key) throws ParseException {
-        String timeString = key;
-        if (key.lastIndexOf("/") != -1) {
-            timeString = key.substring(key.lastIndexOf("/") + 1, key.lastIndexOf(".mp4"));
-        }
-        timeString = timeString.substring(0, 23);
-        return new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS").parse(timeString);
-    }
-
-    public String toStringTime(long time) {
-        return new SimpleDateFormat("mm.ss.SSS").format(new Date(time));
-    }
+ */
 }

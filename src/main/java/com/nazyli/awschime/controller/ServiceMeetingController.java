@@ -65,7 +65,7 @@ public class ServiceMeetingController {
 
     @GetMapping("/ffmpeg-content/{id}")
     public Object content(@PathVariable String id) throws IOException, ParseException {
-        return ffmpegAudioVideo.VideoCompositing(id);
+        return ffmpegAudioVideo.mergeMedia(id);
     }
 
     @GetMapping("/meeting-events/{id}")
