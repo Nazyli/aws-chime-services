@@ -13,4 +13,5 @@ public interface ChimeServices {
     ListMediaCapturePipelinesResult listMediaCapture(String nextToken, Integer maxResults);
     MediaCapturePipeline createMediaCapturePipeline(String meetingId);
     DeleteMediaCapturePipelineResult deleteMediaCapturePipeline(String mediaPipelineId);
+    ListAttendeesResult listAttendees(String meetingId, String nextToken, Integer maxResults);
 }

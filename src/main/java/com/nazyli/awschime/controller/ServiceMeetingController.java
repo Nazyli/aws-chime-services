@@ -82,6 +82,13 @@ public class ServiceMeetingController {
         return res;
     }
 
+    @GetMapping("/listAttendees/{id}")
+    public Object listAttendees(@PathVariable String id){
+        Map<String, Object> res = new HashMap<>();
+        res.put("listAttendees", chimeService.listAttendees(id, null, null));
+        return res;
+    }
+
     @GetMapping("/listMediaCapture")
     public Object listMediaCapture() {
         Map<String, Object> res = new HashMap<>();
@@ -110,6 +117,14 @@ public class ServiceMeetingController {
             listObject.add(os.getKey());
         }
         res.put("listBucket", listObject);
+        return res;
+    }
+
+    @GetMapping("/listMedia")
+    public Object listMedia(@RequestParam String meetingId, @RequestParam String folder) {
+        Map<String, Object> res = new HashMap<>();
+        List<String> listObject = ffmpegAudioVideo.listMediaUrl(meetingId, folder);
+        res.put("listMedia", listObject);
         return res;
     }
 

@@ -77,6 +77,18 @@ public class ChimeServicesImpl implements ChimeServices{
             return null;
         }
     }
+    public ListAttendeesResult listAttendees(String meetingId, String nextToken, Integer maxResults) {
+        ListAttendeesRequest req = new ListAttendeesRequest();
+        req.setMeetingId(meetingId);
+        req.setNextToken(nextToken);
+        req.setMaxResults(maxResults);
+        try {
+            return chimeClient.listAttendees(req);
+        } catch (NotFoundException | ForbiddenException e) {
+            return null;
+        }
+    }
+
 
     public void deleteMeeting(String meetingId) {
         DeleteMeetingRequest req = new DeleteMeetingRequest();

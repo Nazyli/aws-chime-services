@@ -62,21 +62,21 @@ public class FFMPEGAudioVideo {
                 String fileVideo = videoProcess(meetingId, fileAudio, startAudio, videoName, videoUrl);
                 if (fileVideo != null) {
                     key = String.format(FOLDER_MEETING, meetingId) + videoName;
-                    s3Client.putObject(bucketName, key, new File(fileVideo));
+//                    s3Client.putObject(bucketName, key, new File(fileVideo));
                 } else {
                     throw new RuntimeException("Error video merge");
                 }
             } else {
                 key = String.format(FOLDER_MEETING, meetingId) + audioName;
-                s3Client.putObject(bucketName, key, new File(fileAudio));
+//                s3Client.putObject(bucketName, key, new File(fileAudio));
             }
 
         } else {
             throw new RuntimeException("Error audio merge");
         }
-        FileUtils.deleteDirectory(new File(String.format(TEMPORARY_SAVE, meetingId)));
-
-        return s3Client.getUrl(bucketName, key).toExternalForm();
+//        FileUtils.deleteDirectory(new File(String.format(TEMPORARY_SAVE, meetingId)));
+        return fileAudio;
+//        return s3Client.getUrl(bucketName, key).toExternalForm();
     }
 
     public String audioProcess(String meetingId, String audioName, List<String> audioUrl) throws IOException {
@@ -154,7 +154,7 @@ public class FFMPEGAudioVideo {
             videoUrl.forEach(builder::addInput);
             builder.setComplexFilter(filterComplexVideo(contentList))
                     .addOutput(outputFileContent)
-                    .setAudioCodec("aac")
+//                    .setAudioCodec("aac")
                     .setVideoCodec("libx264")
                     .addExtraArgs("-vsync", "2", "-map", "[final]", "-map", "0:a")
                     .setFormat("mp4")

@@ -63,7 +63,7 @@ public class ConferenceRoomController {
 
         Map<String, Object> attendInfo = new HashMap<>();
         attendInfo.put("AttendeeId", att.getAttendeeId());
-        attendInfo.put("Name", att.getAttendeeId());
+        attendInfo.put("Name", "Evry Nazyli");
 
         Map<String, Object> res = new HashMap<>();
         res.put("AttendeeInfo", attendInfo);
