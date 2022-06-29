@@ -45,38 +45,41 @@ public class FFMPEGAudioVideo {
     public String mergeMedia(String meetingId) throws ParseException, IOException {
         String key = "";
         String audioName = "audio_" + meetingId + ".mp4";
-        List<String> audioUrl = listMediaUrl(meetingId, "audio").stream()
-                .map(e -> s3Client.getUrl(bucketName, e).toExternalForm())
-                .collect(Collectors.toList());
-
-        Date startAudio = toDate(audioUrl.get(0));
-
-        String fileAudio = audioProcess(meetingId, audioName, audioUrl);
-        if (fileAudio != null) {
-
-            String videoName = "video_" + meetingId + ".mp4";
-            List<String> videoUrl = listMediaUrl(meetingId, "video").stream()
-                    .map(e -> s3Client.getUrl(bucketName, e).toExternalForm())
-                    .collect(Collectors.toList());
-            if (!videoUrl.isEmpty()) {
-                String fileVideo = videoProcess(meetingId, fileAudio, startAudio, videoName, videoUrl);
-                if (fileVideo != null) {
-                    key = String.format(FOLDER_MEETING, meetingId) + videoName;
-//                    s3Client.putObject(bucketName, key, new File(fileVideo));
-                } else {
-                    throw new RuntimeException("Error video merge");
-                }
-            } else {
-                key = String.format(FOLDER_MEETING, meetingId) + audioName;
-//                s3Client.putObject(bucketName, key, new File(fileAudio));
-            }
-
-        } else {
-            throw new RuntimeException("Error audio merge");
-        }
+//        List<String> audioUrl = listMediaUrl(meetingId, "audio").stream()
+//                .map(e -> s3Client.getUrl(bucketName, e).toExternalForm())
+//                .collect(Collectors.toList());
+//
+//        Date startAudio = toDate(audioUrl.get(0));
+//
+//        String fileAudio = audioProcess(meetingId, audioName, audioUrl);
+//        if (fileAudio != null) {
+//
+//            String videoName = "video_" + meetingId + ".mp4";
+//            List<String> videoUrl = listMediaUrl(meetingId, "video").stream()
+//                    .map(e -> s3Client.getUrl(bucketName, e).toExternalForm())
+//                    .collect(Collectors.toList());
+//            if (!videoUrl.isEmpty()) {
+//                String fileVideo = videoProcess(meetingId, fileAudio, startAudio, videoName, videoUrl);
+//                if (fileVideo != null) {
+//                    key = String.format(FOLDER_MEETING, meetingId) + videoName;
+////                    s3Client.putObject(bucketName, key, new File(fileVideo));
+//                } else {
+//                    throw new RuntimeException("Error video merge");
+//                }
+//            } else {
+//                key = String.format(FOLDER_MEETING, meetingId) + audioName;
+////                s3Client.putObject(bucketName, key, new File(fileAudio));
+//            }
+//
+//        } else {
+//            throw new RuntimeException("Error audio merge");
+//        }
 //        FileUtils.deleteDirectory(new File(String.format(TEMPORARY_SAVE, meetingId)));
-        return fileAudio;
-//        return s3Client.getUrl(bucketName, key).toExternalForm();
+        key = String.format(FOLDER_MEETING, meetingId) + audioName;
+
+        s3Client.putObject(bucketName, key, new File("/Users/nazyli/downloads/v-call/captures/3603d522-41da-4ca8-9fce-4d34491b0706/audio_3603d522-41da-4ca8-9fce-4d34491b0706.mp4"));
+
+        return s3Client.getUrl(bucketName, key).toExternalForm();
     }
 
     public String audioProcess(String meetingId, String audioName, List<String> audioUrl) throws IOException {
@@ -165,6 +168,11 @@ public class FFMPEGAudioVideo {
             FFmpegJob job = executor.createJob(builder);
             job.run();
 
+            Runtime rt = Runtime.getRuntime();
+//            FFmpegJob.State.RUNNING
+//                    job.getState()
+
+
             if (FFmpegJob.State.FINISHED == job.getState()) {
                 return outputFileContent;
             }
@@ -205,7 +213,12 @@ public class FFMPEGAudioVideo {
         ListObjectsRequest listObjectsRequest = new ListObjectsRequest()
                 .withBucketName(bucketName).withPrefix(prefixBucket);
         ObjectListing objects = s3Client.listObjects(listObjectsRequest);
-        return objects.getObjectSummaries()
+        List<S3ObjectSummary> summaries = objects.getObjectSummaries();
+        while (objects.isTruncated()) {
+            objects = s3Client.listNextBatchOfObjects (objects);
+            summaries.addAll (objects.getObjectSummaries());
+        }
+        return summaries
                 .stream()
                 .sorted(Comparator.comparing(S3ObjectSummary::getLastModified))
                 .map(S3ObjectSummary::getKey).collect(Collectors.toList());
